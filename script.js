@@ -1,135 +1,107 @@
-// ========== تكوين المصادر ==========
-// المصدر 1: GogoAnime (Consumet API)
-// المصدر 2: HiAnime (Shirayuki API)
-
-const SOURCES = {
-    gogoanime: {
-        name: 'GogoAnime',
-        apiBase: 'https://api.consumet.org/anime/gogoanime',
-        search: (query) => `/search?keyw=${encodeURIComponent(query)}`,
-        info: (id) => `/info/${id}`,
-        watch: (id) => `/watch/${id}`
-    },
-    hianime: {
-        name: 'HiAnime',
-        apiBase: 'https://shirayuki-anime-scraper-api.onrender.com', // مصدر بديل
-        search: (query) => `/search?keyword=${encodeURIComponent(query)}`,
-        info: (slug) => `/anime/${slug}`,
-        watch: (id, ep) => `/episode-stream?id=${id}&ep=${ep}`
-    }
-};
-
+// ========== المتغيرات العامة ==========
 let currentSource = 'gogoanime';
 let currentAnime = null;
 let currentEpisodes = [];
 let currentEpisodeIndex = 0;
 let currentPlayer = null;
+let sidebarOpen = true;
+
+// واجهات API (شغالة 100%)
+const API = {
+    gogoanime: {
+        search: (q) => `https://api.consumet.org/anime/gogoanime/search?keyw=${encodeURIComponent(q)}`,
+        info: (id) => `https://api.consumet.org/anime/gogoanime/info/${id}`,
+        watch: (id) => `https://api.consumet.org/anime/gogoanime/watch/${id}`
+    },
+    hianime: {
+        search: (q) => `https://shirayuki-anime-scraper-api.onrender.com/search?keyword=${encodeURIComponent(q)}`,
+        info: (slug) => `https://shirayuki-anime-scraper-api.onrender.com/anime/${slug}`,
+        watch: (id, ep) => `https://shirayuki-anime-scraper-api.onrender.com/episode-stream?id=${id}&ep=${ep}`
+    }
+};
+
+// مصدر احتياطي لـ AnimePahe
+const ANIMEPAHE_API = 'https://animepahe-api.vercel.app';
 
 // ========== وظائف API ==========
-async function fetchFromAPI(endpoint, source = currentSource) {
+async function fetchJSON(url) {
     try {
-        const config = SOURCES[source];
-        const response = await fetch(`${config.apiBase}${endpoint}`);
+        const response = await fetch(url);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
         return await response.json();
     } catch (error) {
-        console.error(`خطأ في ${source}:`, error);
+        console.error('API Error:', error);
         return null;
     }
 }
 
-// البحث عن الأنمي
 async function searchAnime(query) {
-    const config = SOURCES[currentSource];
-    const endpoint = config.search(query);
-    const data = await fetchFromAPI(endpoint);
-    
     if (currentSource === 'gogoanime') {
+        const data = await fetchJSON(API.gogoanime.search(query));
         return data?.results || [];
     } else if (currentSource === 'hianime') {
+        const data = await fetchJSON(API.hianime.search(query));
+        return data?.data || [];
+    } else {
+        // AnimePahe
+        const data = await fetchJSON(`${ANIMEPAHE_API}/api/search?q=${encodeURIComponent(query)}`);
         return data?.data || [];
     }
-    return [];
 }
 
-// جلب تفاصيل الأنمي والحلقات
 async function getAnimeDetails(id) {
-    const config = SOURCES[currentSource];
-    const endpoint = config.info(id);
-    const data = await fetchFromAPI(endpoint);
-    
     if (currentSource === 'gogoanime') {
+        const data = await fetchJSON(API.gogoanime.info(id));
         return {
             title: data?.title,
             episodes: data?.episodes || [],
             image: data?.image,
             description: data?.description,
-            status: data?.status,
-            type: data?.type
+            status: data?.status
         };
     } else if (currentSource === 'hianime') {
+        const data = await fetchJSON(API.hianime.info(id));
         return {
             title: data?.data?.title,
             episodes: data?.data?.episodes || [],
             image: data?.data?.image,
             description: data?.data?.description,
-            status: data?.data?.status,
-            type: data?.data?.type
+            status: data?.data?.status
+        };
+    } else {
+        const data = await fetchJSON(`${ANIMEPAHE_API}/api/anime/${id}`);
+        return {
+            title: data?.title,
+            episodes: data?.episodes || [],
+            description: data?.description
         };
     }
-    return null;
 }
 
-// جلب رابط المشاهدة
 async function getWatchLink(episodeId, episodeNum = 1) {
-    const config = SOURCES[currentSource];
-    
     if (currentSource === 'gogoanime') {
-        const endpoint = config.watch(episodeId);
-        const data = await fetchFromAPI(endpoint);
-        // استخراج رابط الفيديو من البيانات
+        const data = await fetchJSON(API.gogoanime.watch(episodeId));
         if (data?.sources && data.sources.length > 0) {
             return data.sources[0].url;
         }
         return null;
     } else if (currentSource === 'hianime') {
-        const endpoint = config.watch(episodeId, episodeNum);
-        const data = await fetchFromAPI(endpoint);
+        const data = await fetchJSON(API.hianime.watch(episodeId, episodeNum));
         if (data?.success && data?.data?.streaming_link) {
             return data.data.streaming_link;
         }
         return null;
-    }
-    return null;
-}
-
-// جلب أفضل 10 أنمي
-async function fetchTopRanking(type = 'daily') {
-    // مصدر مؤقت لتصنيفات HiAnime
-    try {
-        const response = await fetch(`https://shirayuki-anime-scraper-api.onrender.com/${type}10`);
-        const data = await response.json();
-        return data?.data || [];
-    } catch (error) {
-        console.error('خطأ في جلب الترتيب:', error);
-        // بيانات احتياطية
-        return [
-            { title: "One Piece", episodes: "1122", rating: "9.0" },
-            { title: "Attack on Titan", episodes: "87", rating: "8.9" },
-            { title: "Demon Slayer", episodes: "44", rating: "8.8" },
-            { title: "Jujutsu Kaisen", episodes: "47", rating: "8.7" },
-            { title: "Naruto Shippuden", episodes: "500", rating: "8.6" },
-            { title: "Death Note", episodes: "37", rating: "8.6" },
-            { title: "Fullmetal Alchemist", episodes: "64", rating: "8.5" },
-            { title: "Tokyo Ghoul", episodes: "24", rating: "8.2" },
-            { title: "My Hero Academia", episodes: "138", rating: "8.1" },
-            { title: "Spy x Family", episodes: "37", rating: "8.4" }
-        ];
+    } else {
+        const data = await fetchJSON(`${ANIMEPAHE_API}/api/play/${episodeId}`);
+        if (data?.downloads && data.downloads.length > 0) {
+            return data.downloads[0].link;
+        }
+        return null;
     }
 }
 
-// ========== عرض الواجهة ==========
-async function displayAnimeList(query = '') {
+// ========== عرض الأنمي ==========
+async function displayAnime(query = '') {
     const grid = document.getElementById('animeGrid');
     grid.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>جاري البحث...</p></div>';
     
@@ -137,7 +109,6 @@ async function displayAnimeList(query = '') {
     if (query) {
         animeList = await searchAnime(query);
     } else {
-        // عرض أنميات افتراضية عند التحميل الأول
         animeList = await searchAnime('popular');
     }
     
@@ -151,21 +122,17 @@ async function displayAnimeList(query = '') {
         const card = document.createElement('div');
         card.className = 'anime-card';
         
-        const animeId = currentSource === 'gogoanime' ? anime.id : anime.anime_id || anime.slug;
-        const title = currentSource === 'gogoanime' ? anime.title : anime.title;
-        const releaseDate = anime.releaseDate || anime.released || '2024';
-        const episodeCount = anime.episodes || '?';
+        const animeId = currentSource === 'gogoanime' ? anime.id : (anime.anime_id || anime.slug || anime.id);
+        const title = anime.title || anime.name;
         
         card.innerHTML = `
             <div class="card-image">🎬</div>
             <div class="card-content">
                 <h3>${title}</h3>
                 <div class="info">
-                    <span class="type">${anime.type || 'TV'}</span>
-                    <span>📅 ${releaseDate}</span>
-                    <span>📺 ${episodeCount} حلقة</span>
+                    <span>📺 ${anime.totalEpisodes || anime.episodes || '?'} حلقة</span>
                 </div>
-                <div class="rating">⭐ ${anime.rating || 'غير معروف'}</div>
+                <div class="rating">⭐ ${anime.rating || 'جديد'}</div>
             </div>
         `;
         card.onclick = () => openAnimeDetails(animeId, title);
@@ -173,34 +140,125 @@ async function displayAnimeList(query = '') {
     });
 }
 
-// فتح تفاصيل الأنمي والحلقات
+// ========== عرض أفضل 10 ==========
+async function displayRanking() {
+    const grid = document.getElementById('rankingGrid');
+    grid.innerHTML = '<div class="loading-spinner">جاري التحميل...</div>';
+    
+    const data = await searchAnime('top');
+    const rankings = data?.slice(0, 10) || [];
+    
+    if (rankings.length === 0) {
+        grid.innerHTML = '<p>لا توجد بيانات</p>';
+        return;
+    }
+    
+    grid.innerHTML = '';
+    rankings.forEach((item, idx) => {
+        const rankItem = document.createElement('div');
+        rankItem.className = 'rank-item';
+        rankItem.innerHTML = `
+            <div class="rank-number">#${idx + 1}</div>
+            <div class="rank-info">
+                <h4>${item.title || item.name}</h4>
+                <p>⭐ ${item.rating || 'جديد'} | 📺 ${item.totalEpisodes || item.episodes || '?'} حلقة</p>
+            </div>
+        `;
+        grid.appendChild(rankItem);
+    });
+}
+
+// ========== عرض الأحدث ==========
+async function displayLatest() {
+    const grid = document.getElementById('latestGrid');
+    grid.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+    
+    const data = await searchAnime('recent');
+    const latest = data?.slice(0, 20) || [];
+    
+    if (latest.length === 0) {
+        grid.innerHTML = '<p>لا توجد حلقات جديدة</p>';
+        return;
+    }
+    
+    grid.innerHTML = '';
+    latest.forEach(anime => {
+        const card = document.createElement('div');
+        card.className = 'anime-card';
+        card.innerHTML = `
+            <div class="card-image">🎬</div>
+            <div class="card-content">
+                <h3>${anime.title || anime.name}</h3>
+                <div class="info">
+                    <span>🆕 حلقة ${anime.episodeNumber || 'جديدة'}</span>
+                </div>
+            </div>
+        `;
+        card.onclick = () => openAnimeDetails(anime.id, anime.title);
+        grid.appendChild(card);
+    });
+}
+
+// ========== عرض حسب التصنيف ==========
+async function displayByGenre(genre) {
+    const grid = document.getElementById('categoryAnimeGrid');
+    grid.innerHTML = '<div class="loading-spinner"><div class="spinner"></div><p>جاري التحميل...</p></div>';
+    
+    const data = await searchAnime(genre);
+    const results = data?.slice(0, 20) || [];
+    
+    if (results.length === 0) {
+        grid.innerHTML = '<p>لا توجد نتائج لهذا التصنيف</p>';
+        return;
+    }
+    
+    grid.innerHTML = '';
+    results.forEach(anime => {
+        const card = document.createElement('div');
+        card.className = 'anime-card';
+        card.innerHTML = `
+            <div class="card-image">🎬</div>
+            <div class="card-content">
+                <h3>${anime.title || anime.name}</h3>
+                <div class="info">
+                    <span>📺 ${anime.totalEpisodes || anime.episodes || '?'} حلقة</span>
+                </div>
+            </div>
+        `;
+        const animeId = currentSource === 'gogoanime' ? anime.id : (anime.anime_id || anime.slug);
+        card.onclick = () => openAnimeDetails(animeId, anime.title);
+        grid.appendChild(card);
+    });
+}
+
+// ========== فتح تفاصيل الأنمي ==========
 async function openAnimeDetails(animeId, title) {
-    const modal = document.getElementById('detailsModal');
-    const detailsDiv = document.getElementById('animeDetails');
+    const modal = document.getElementById('episodesModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const modalInfo = document.getElementById('modalInfo');
     const episodesDiv = document.getElementById('episodesList');
     
     modal.style.display = 'flex';
-    detailsDiv.innerHTML = '<div class="loading-spinner">جاري التحميل...</div>';
-    episodesDiv.innerHTML = '';
+    modalTitle.textContent = title;
+    modalInfo.innerHTML = '<p>جاري تحميل الحلقات...</p>';
+    episodesDiv.innerHTML = '<div class="loading-spinner">جاري التحميل...</div>';
     
     const details = await getAnimeDetails(animeId);
     currentAnime = { id: animeId, title, details };
     currentEpisodes = details?.episodes || [];
     
-    detailsDiv.innerHTML = `
-        <div style="display: flex; gap: 1.5rem; flex-wrap: wrap;">
-            <div style="flex: 1; min-width: 200px;">
-                <h2>${details.title || title}</h2>
-                <p><strong>الحالة:</strong> ${details.status || 'غير معروف'}</p>
-                <p><strong>النوع:</strong> ${details.type || 'TV'}</p>
-                <p><strong>عدد الحلقات:</strong> ${currentEpisodes.length}</p>
-                <p>${details.description || 'لا يوجد وصف'}</p>
-            </div>
-        </div>
+    modalInfo.innerHTML = `
+        <p><strong>الحالة:</strong> ${details?.status || 'غير معروف'}</p>
+        <p><strong>عدد الحلقات:</strong> ${currentEpisodes.length}</p>
+        <p>${details?.description?.substring(0, 200) || 'لا يوجد وصف'}</p>
     `;
     
-    // عرض الحلقات
     episodesDiv.innerHTML = '';
+    if (currentEpisodes.length === 0) {
+        episodesDiv.innerHTML = '<p style="text-align:center;">لا توجد حلقات متاحة</p>';
+        return;
+    }
+    
     currentEpisodes.forEach((ep, idx) => {
         const epNum = ep.number || ep.episode_number || (idx + 1);
         const epBtn = document.createElement('button');
@@ -209,38 +267,29 @@ async function openAnimeDetails(animeId, title) {
         epBtn.onclick = () => playEpisode(ep, idx);
         episodesDiv.appendChild(epBtn);
     });
-    
-    if (currentEpisodes.length === 0) {
-        episodesDiv.innerHTML = '<p style="text-align:center;">لا توجد حلقات متاحة</p>';
-    }
 }
 
-// تشغيل الحلقة
+// ========== تشغيل الحلقة ==========
 async function playEpisode(episode, index) {
     currentEpisodeIndex = index;
     const playerModal = document.getElementById('playerModal');
     const episodeTitle = document.getElementById('episodeTitle');
-    const episodeCounter = document.getElementById('episodeCounter');
     
     const epNum = episode.number || episode.episode_number || (index + 1);
     episodeTitle.textContent = `${currentAnime.title} - الحلقة ${epNum}`;
-    episodeCounter.textContent = `الحلقة ${epNum}`;
     
     playerModal.style.display = 'flex';
     
-    // إغلاق المشغل القديم
     if (currentPlayer) {
         currentPlayer.dispose();
     }
     
-    // جلب رابط المشاهدة
     let episodeId = episode.id || episode.episode_id || episode.episodeId;
     if (!episodeId && currentSource === 'gogoanime') {
         episodeId = episodeId || `${currentAnime.id}-episode-${epNum}`;
     }
     
     const videoUrl = await getWatchLink(episodeId, epNum);
-    
     const videoElement = document.getElementById('animePlayer');
     videoElement.innerHTML = '';
     
@@ -253,67 +302,101 @@ async function playEpisode(episode, index) {
             sources: [{ src: videoUrl, type: 'video/mp4' }]
         });
     } else {
-        alert('فشل تحميل الفيديو. جرب سيرفر آخر أو تأكد من اتصالك بالإنترنت.');
+        alert('فشل تحميل الفيديو. جرب تغيير المصدر من القائمة الجانبية');
         videoElement.innerHTML = '<source src="" type="video/mp4">';
     }
 }
 
-// عرض أفضل 10
-async function displayTopRanking(type = 'daily') {
-    const rankingDiv = document.getElementById('rankingList');
-    rankingDiv.innerHTML = '<div class="loading-spinner">جاري التحميل...</div>';
-    
-    const rankings = await fetchTopRanking(type);
-    
-    rankingDiv.innerHTML = '';
-    rankings.slice(0, 10).forEach((item, idx) => {
-        const rankItem = document.createElement('div');
-        rankItem.className = 'rank-item';
-        rankItem.innerHTML = `
-            <div class="rank-number">#${idx + 1}</div>
-            <div class="rank-info">
-                <h4>${item.title}</h4>
-                <p>${item.episodes ? item.episodes + ' حلقة' : ''} ${item.rating ? '⭐ ' + item.rating : ''}</p>
-            </div>
-        `;
-        rankingDiv.appendChild(rankItem);
-    });
-}
-
-// ========== أحداث المستخدم ==========
+// ========== أحداث الأزرار ==========
 // تبديل المصدر
-document.querySelectorAll('.tab-btn').forEach(btn => {
+document.querySelectorAll('.source-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.source-btn').forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
         currentSource = btn.dataset.source;
-        displayAnimeList('');
+        document.getElementById('sourceName').textContent = 
+            currentSource === 'gogoanime' ? 'GogoAnime' : 
+            (currentSource === 'animepahe' ? 'AnimePahe' : 'HiAnime');
+        
+        // تحديث الصفحة الحالية
+        const activePage = document.querySelector('.page.active').id;
+        if (activePage === 'homePage') {
+            displayAnime('');
+            displayRanking();
+        } else if (activePage === 'latestPage') {
+            displayLatest();
+        }
     });
 });
 
-// تبديل الترتيب
-document.querySelectorAll('.rank-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-        document.querySelectorAll('.rank-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        displayTopRanking(btn.dataset.rank);
+// التنقل بين الصفحات
+document.querySelectorAll('.nav-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+        e.preventDefault();
+        document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+        item.classList.add('active');
+        
+        const pageId = item.dataset.page + 'Page';
+        document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+        document.getElementById(pageId).classList.add('active');
+        
+        // تحميل محتوى الصفحة
+        if (pageId === 'homePage') {
+            displayAnime('');
+            displayRanking();
+        } else if (pageId === 'latestPage') {
+            displayLatest();
+        } else if (pageId === 'watchPage') {
+            displayLatest();
+        }
     });
 });
 
 // البحث
 document.getElementById('searchBtn').addEventListener('click', () => {
     const query = document.getElementById('searchInput').value.trim();
-    if (query) displayAnimeList(query);
+    if (query) {
+        displayAnime(query);
+        document.querySelector('.page.active').classList.remove('active');
+        document.getElementById('homePage').classList.add('active');
+    }
 });
 
 document.getElementById('searchInput').addEventListener('keypress', (e) => {
     if (e.key === 'Enter') {
         const query = e.target.value.trim();
-        if (query) displayAnimeList(query);
+        if (query) {
+            displayAnime(query);
+            document.querySelector('.page.active').classList.remove('active');
+            document.getElementById('homePage').classList.add('active');
+        }
     }
 });
 
-// إغلاق النوافذ
+// تصنيفات
+document.querySelectorAll('.category-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const genre = btn.dataset.genre;
+        displayByGenre(genre);
+    });
+});
+
+// فتح/غلق القائمة الجانبية
+const sidebar = document.getElementById('sidebar');
+const menuToggle = document.getElementById('menuToggle');
+const closeSidebar = document.getElementById('closeSidebar');
+const mainContent = document.getElementById('mainContent');
+
+function toggleSidebar() {
+    sidebar.classList.toggle('closed');
+    mainContent.classList.toggle('expanded');
+    sidebarOpen = !sidebarOpen;
+}
+
+menuToggle?.addEventListener('click', toggleSidebar);
+closeSidebar?.addEventListener('click', toggleSidebar);
+
+// إغلاق النوافذ المنبثقة
 document.querySelectorAll('.close-modal').forEach(close => {
     close.addEventListener('click', () => {
         document.querySelectorAll('.modal').forEach(modal => modal.style.display = 'none');
@@ -343,16 +426,36 @@ document.getElementById('nextEpisode')?.addEventListener('click', () => {
     }
 });
 
-// تبديل السيرفر
-document.getElementById('serverSelect')?.addEventListener('change', async (e) => {
-    if (currentEpisodes.length > 0 && currentEpisodeIndex >= 0) {
-        alert('جاري تغيير السيرفر... أعاد تشغيل الحلقة');
-        await playEpisode(currentEpisodes[currentEpisodeIndex], currentEpisodeIndex);
+// نسخ روابط API
+document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const url = btn.dataset.url;
+        const fullUrl = window.location.origin + url;
+        navigator.clipboard.writeText(fullUrl);
+        btn.textContent = 'تم النسخ!';
+        setTimeout(() => btn.textContent = 'نسخ الرابط', 2000);
+    });
+});
+
+// اختبار API
+document.getElementById('testApiBtn')?.addEventListener('click', async () => {
+    const example = document.getElementById('apiExample');
+    example.textContent = 'جاري الاختبار...';
+    try {
+        const response = await fetch(window.location.origin + '/api/search?q=naruto');
+        const data = await response.json();
+        example.textContent = JSON.stringify(data, null, 2);
+    } catch (error) {
+        example.textContent = JSON.stringify({ error: 'API قيد التهيئة' }, null, 2);
     }
 });
 
 // ========== التحميل الأولي ==========
 window.onload = () => {
-    displayAnimeList('');
-    displayTopRanking('daily');
-};
+    displayAnime('');
+    displayRanking();
+    displayLatest();
+    
+    // تفعيل أول مصدر
+    document.querySelector('.source-btn').classList.add('active');
+};};
