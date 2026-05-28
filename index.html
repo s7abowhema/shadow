@@ -3,84 +3,202 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AnimeHub | مشاهدة وتحميل الأنمي</title>
+    <title>AnimeHub - مشاهدة وتحميل الأنمي</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Video.js للمشغل -->
     <link href="https://vjs.zencdn.net/8.10.0/video-js.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <!-- شريط التنقل -->
-    <nav class="navbar">
-        <div class="nav-container">
-            <div class="logo">
-                <h1>🎬 Anime<span>Hub</span></h1>
-            </div>
-            <div class="nav-links">
-                <a href="#" class="active">الرئيسية</a>
-                <a href="#">المشاهدة</a>
-                <a href="#">الأحدث</a>
-                <a href="#">التصنيفات</a>
-                <a href="#">API للبوتات</a>
-            </div>
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="ابحث عن أنمي...">
-                <button id="searchBtn">🔍</button>
-            </div>
+    <!-- الشريط الجانبي (Sidebar) -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2>🎬 Anime<span>Hub</span></h2>
+            <button class="close-sidebar" id="closeSidebar">✖</button>
         </div>
-    </nav>
-
-    <!-- Hero Section -->
-    <section class="hero">
-        <div class="hero-content">
-            <h2>شاهد أحدث الحلقات<br><span>بجودة عالية ومشاهدة مباشرة</span></h2>
-            <p>أكبر مكتبة أنمي عربية - مشاهدة وتحميل مباشر</p>
-            <div class="hero-stats">
-                <div class="stat"><span>+10,000</span> حلقة</div>
-                <div class="stat"><span>+500</span> أنمي</div>
-                <div class="stat"><span>مجاني</span> بالكامل</div>
-            </div>
+        
+        <div class="sidebar-nav">
+            <a href="#" class="nav-item active" data-page="home">
+                <span class="nav-icon">🏠</span>
+                <span>الرئيسية</span>
+            </a>
+            <a href="#" class="nav-item" data-page="watch">
+                <span class="nav-icon">🎬</span>
+                <span>المشاهدة</span>
+            </a>
+            <a href="#" class="nav-item" data-page="latest">
+                <span class="nav-icon">🆕</span>
+                <span>الأحدث</span>
+            </a>
+            <a href="#" class="nav-item" data-page="categories">
+                <span class="nav-icon">📂</span>
+                <span>التصنيفات</span>
+            </a>
+            <a href="#" class="nav-item" data-page="api">
+                <span class="nav-icon">🤖</span>
+                <span>API للبوتات</span>
+            </a>
         </div>
-    </section>
 
-    <!-- تبويبات المصادر -->
-    <div class="source-tabs">
-        <button class="tab-btn active" data-source="gogoanime">🎬 GogoAnime</button>
-        <button class="tab-btn" data-source="animepahe">🌸 AnimePahe</button>
-        <button class="tab-btn" data-source="hiAnime">⭐ HiAnime</button>
+        <div class="sidebar-sources">
+            <h3>مصادر المشاهدة</h3>
+            <button class="source-btn" data-source="gogoanime">
+                🎬 GogoAnime
+            </button>
+            <button class="source-btn" data-source="animepahe">
+                🌸 AnimePahe
+            </button>
+            <button class="source-btn" data-source="hianime">
+                ⭐ HiAnime
+            </button>
+        </div>
+
+        <div class="sidebar-footer">
+            <p>© 2024 AnimeHub</p>
+            <p>مشاهدة وتحميل مباشر</p>
+        </div>
     </div>
 
-    <!-- محتوى الأنمي -->
-    <main>
-        <div class="section-header">
-            <h3>📺 أحدث الأنميات</h3>
-            <span class="view-all">عرض الكل →</span>
-        </div>
-        <div class="anime-grid" id="animeGrid">
-            <div class="loading-spinner">
-                <div class="spinner"></div>
-                <p>جاري تحميل الأنميات...</p>
+    <!-- زر فتح القائمة الجانبية -->
+    <button class="menu-toggle" id="menuToggle">☰</button>
+
+    <!-- المحتوى الرئيسي -->
+    <div class="main-content" id="mainContent">
+        <!-- هيدر -->
+        <header class="main-header">
+            <div class="header-search">
+                <input type="text" id="searchInput" placeholder="ابحث عن أنمي... (مثال: Naruto, One Piece)">
+                <button id="searchBtn">🔍 بحث</button>
+            </div>
+            <div class="current-source" id="currentSourceDisplay">
+                المصدر الحالي: <span id="sourceName">GogoAnime</span>
+            </div>
+        </header>
+
+        <!-- محتوى الصفحة الرئيسية -->
+        <div id="homePage" class="page active">
+            <div class="hero">
+                <div class="hero-content">
+                    <h2>شاهد أحدث الحلقات<br><span>بجودة عالية ومشاهدة مباشرة</span></h2>
+                    <p>أكبر مكتبة أنمي عربية - مشاهدة وتحميل مباشر</p>
+                    <div class="hero-stats">
+                        <div class="stat"><span>+500</span> أنمي</div>
+                        <div class="stat"><span>+10,000</span> حلقة</div>
+                        <div class="stat"><span>مجاني</span> بالكامل</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-header">
+                <h3>🔥 أشهر الأنميات الآن</h3>
+            </div>
+            <div class="anime-grid" id="animeGrid">
+                <div class="loading-spinner">
+                    <div class="spinner"></div>
+                    <p>جاري تحميل الأنميات...</p>
+                </div>
+            </div>
+
+            <div class="section-header">
+                <h3>🏆 أفضل 10 أنمي</h3>
+            </div>
+            <div class="ranking-grid" id="rankingGrid">
+                <div class="loading-spinner">جاري التحميل...</div>
             </div>
         </div>
-    </main>
 
-    <!-- قسم أفضل 10 -->
-    <section class="top-ranking">
-        <div class="section-header">
-            <h3>🏆 أفضل 10 أنمي</h3>
-            <div class="ranking-tabs">
-                <button class="rank-btn active" data-rank="daily">اليومي</button>
-                <button class="rank-btn" data-rank="weekly">الأسبوعي</button>
-                <button class="rank-btn" data-rank="monthly">الشهري</button>
+        <!-- صفحة API -->
+        <div id="apiPage" class="page">
+            <div class="api-container">
+                <h2>🤖 API خاصة للبوتات</h2>
+                <p>استخدم هذه النقاط لجلب البيانات لبوتك (Discord, Telegram, WhatsApp)</p>
+                
+                <div class="api-endpoints">
+                    <div class="endpoint">
+                        <h3>🔍 البحث</h3>
+                        <code>GET /api/search?q=اسم_الأنمي</code>
+                        <button class="copy-btn" data-url="/api/search?q=naruto">نسخ الرابط</button>
+                    </div>
+                    <div class="endpoint">
+                        <h3>📺 تفاصيل أنمي</h3>
+                        <code>GET /api/anime/:id</code>
+                        <button class="copy-btn" data-url="/api/anime/one-piece">نسخ الرابط</button>
+                    </div>
+                    <div class="endpoint">
+                        <h3>📋 قائمة الحلقات</h3>
+                        <code>GET /api/episodes/:animeId</code>
+                        <button class="copy-btn" data-url="/api/episodes/one-piece">نسخ الرابط</button>
+                    </div>
+                    <div class="endpoint">
+                        <h3>🎲 أنمي عشوائي</h3>
+                        <code>GET /api/random</code>
+                        <button class="copy-btn" data-url="/api/random">نسخ الرابط</button>
+                    </div>
+                    <div class="endpoint">
+                        <h3>📈 الأكثر مشاهدة</h3>
+                        <code>GET /api/trending</code>
+                        <button class="copy-btn" data-url="/api/trending">نسخ الرابط</button>
+                    </div>
+                </div>
+
+                <div class="api-example">
+                    <h3>مثال استجابة API:</h3>
+                    <pre id="apiExample">{
+  "success": true,
+  "results": [...]
+}</pre>
+                    <button id="testApiBtn" class="test-btn">📡 اختبار API الآن</button>
+                </div>
             </div>
         </div>
-        <div class="ranking-list" id="rankingList">
-            <div class="loading-spinner">جاري التحميل...</div>
-        </div>
-    </section>
 
-    <!-- مشغل الفيديو المنبثق -->
+        <!-- صفحة التصنيفات -->
+        <div id="categoriesPage" class="page">
+            <h2>📂 تصنيفات الأنمي</h2>
+            <div class="categories-grid" id="categoriesGrid">
+                <button class="category-btn" data-genre="action">⚔️ أكشن</button>
+                <button class="category-btn" data-genre="adventure">🗺️ مغامرة</button>
+                <button class="category-btn" data-genre="comedy">😄 كوميدي</button>
+                <button class="category-btn" data-genre="drama">🎭 دراما</button>
+                <button class="category-btn" data-genre="fantasy">🧙 فانتازيا</button>
+                <button class="category-btn" data-genre="horror">👻 رعب</button>
+                <button class="category-btn" data-genre="romance">💕 رومانسي</button>
+                <button class="category-btn" data-genre="sci-fi">🚀 خيال علمي</button>
+                <button class="category-btn" data-genre="sports">⚽ رياضة</button>
+            </div>
+            <div class="anime-grid" id="categoryAnimeGrid"></div>
+        </div>
+
+        <!-- صفحة الأحدث -->
+        <div id="latestPage" class="page">
+            <h2>🆕 أحدث الحلقات المضافة</h2>
+            <div class="anime-grid" id="latestGrid">
+                <div class="loading-spinner">جاري التحميل...</div>
+            </div>
+        </div>
+
+        <!-- صفحة المشاهدة -->
+        <div id="watchPage" class="page">
+            <h2>🎬 أحدث الحلقات للمشاهدة</h2>
+            <div class="anime-grid" id="watchGrid">
+                <div class="loading-spinner">جاري التحميل...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة الحلقات -->
+    <div id="episodesModal" class="modal">
+        <div class="modal-content modal-large">
+            <span class="close-modal">&times;</span>
+            <h2 id="modalTitle"></h2>
+            <div id="modalInfo"></div>
+            <div class="episodes-section">
+                <h4>🎬 قائمة الحلقات</h4>
+                <div id="episodesList" class="episodes-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- مشغل الفيديو -->
     <div id="playerModal" class="modal">
         <div class="modal-content modal-player">
             <span class="close-modal">&times;</span>
@@ -88,11 +206,10 @@
                 <h3 id="episodeTitle"></h3>
                 <div class="episode-nav">
                     <button id="prevEpisode">‹ السابقة</button>
-                    <span id="episodeCounter"></span>
                     <button id="nextEpisode">التالية ›</button>
                 </div>
             </div>
-            <video id="animePlayer" class="video-js vjs-default-skin" controls preload="auto">
+            <video id="animePlayer" class="video-js vjs-default-skin" controls preload="auto" width="100%" height="400">
                 <p class="vjs-no-js">مشغل الفيديو غير مدعوم</p>
             </video>
             <div class="server-selector">
@@ -106,10 +223,10 @@
         </div>
     </div>
 
-    <!-- نافذة التفاصيل والحلقات -->
-    <div id="detailsModal" class="modal">
-        <div class="modal-content modal-large">
-            <span class="close-modal">&times;</span>
+    <script src="https://vjs.zencdn.net/8.10.0/video.min.js"></script>
+    <script src="script.js"></script>
+</body>
+                        </html>            <span class="close-modal">&times;</span>
             <div id="animeDetails"></div>
             <div class="episodes-section">
                 <h4>قائمة الحلقات</h4>
